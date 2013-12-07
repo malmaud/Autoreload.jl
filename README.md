@@ -62,7 +62,7 @@ and get back "Second version". If I have been using IJulia, the call to ```arelo
 
 Smart handling of reloaded type definitions
 =============================================
-If you reload a module that defines types, any variables in global scope (the ```Main``` module) that have a type defined in that module will automatically have their type changed to refer to the new module's type. Here's an example:
+If you reload a module that defines **and exports** types, any variables in global scope (the ```Main``` module) that have an exported type defined in that module will automatically have their type changed to refer to the new module's type. Here's an example:
 
 A file called M.jl contains:
 

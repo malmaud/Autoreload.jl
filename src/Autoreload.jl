@@ -11,15 +11,21 @@ function amodule(module_name)
   push!(module_watch, module_name)
 end
 
+function reload_mtime(filename)
+  path = Base.find_in_node1_path(filename)
+  m = mtime(path)
+  if m==0.0
+    warn("Could not find edit time of $filename")
+  end
+  m
+end
+
 function arequire(filename="", command= :on)
   if isempty(filename)
     return collect(keys(files))
   end
-  if filename[end-2:end] != ".jl"
-    filename = string(filename, ".jl")
-  end
   if command == :on
-    files[filename] = mtime(filename)
+    files[filename] = reload_mtime(filename)
     require(filename)
   elseif command == :off
     if haskey(files, filename)
@@ -72,7 +78,7 @@ function deep_reload(file)
     mod_olds = Module[Main.(mod_name) for mod_name in module_watch]
   catch err
     if verbose_level == :warn
-      warn("Type replacement error:\n $err")
+      warn("Type replacement error:\n $(err.msg)")
     end
     reload(file)
     return
@@ -98,15 +104,15 @@ function areload(command= :force)
   end
 
   for (file, file_time) in files
-    if mtime(file) > file_time
+    if reload_mtime(file) > file_time
       try
         deep_reload(file)
       catch err
         if verbose_level == :warn
-          warn("Could not autoreload $(file):\n$err")
+          warn("Could not autoreload $(file):\n$(err.msg)")
         end
       end
-      files[file] = mtime(file)
+      files[file] = reload_mtime(file)
     end
   end
 end
@@ -120,7 +126,7 @@ if isdefined(Main, :IJulia)
   try
     IJulia.push_preexecute_hook(areload_hook)
   catch err
-    warn("Could not add IJulia hooks:\n$err")
+    warn("Could not add IJulia hooks:\n$(err.msg)")
   end
 end
 
