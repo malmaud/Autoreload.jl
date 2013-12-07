@@ -1,6 +1,6 @@
 module Autoreload
 
-export arequire, areload, amodule, ainclude
+export arequire, areload, amodule, aimport
 
 const files = (String=>Float64)[]
 const module_watch = Symbol[]
@@ -30,7 +30,7 @@ function arequire(filename="", command= :on)
   end
 end
 
-function ainclude(filename)
+function aimport(filename)
   arequire(string(filename))
   amodule(symbol(filename))
 end
@@ -115,12 +115,15 @@ function areload_hook()
   areload(:use_state)
 end
 
-import IJulia
-try
-  IJulia.push_preexecute_hook(areload_hook)
-catch err
-  warn("Could not add IJulia hooks:\n$err")
+if isdefined(Main, :IJulia)
+  IJulia = Main.IJulia
+  try
+    IJulia.push_preexecute_hook(areload_hook)
+  catch err
+    warn("Could not add IJulia hooks:\n$err")
+  end
 end
+
 
 
 
