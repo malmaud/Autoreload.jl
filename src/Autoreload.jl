@@ -34,11 +34,13 @@ function arequire(filename="", command= :on)
   else
     error("Command $command not recognized")
   end
+  return
 end
 
 function aimport(filename)
   arequire(string(filename))
   amodule(symbol(filename))
+  return
 end
 
 function alter_type(x, T::DataType)
@@ -115,6 +117,7 @@ function areload(command= :force)
       files[file] = reload_mtime(file)
     end
   end
+  return
 end
 
 function areload_hook()
