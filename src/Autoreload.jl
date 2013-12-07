@@ -3,6 +3,7 @@ module Autoreload
 export arequire, areload
 
 const files = (String=>Float64)[]
+const module_watch = Symbol[]
 verbose_level = :warn
 state = :on
 
@@ -26,8 +27,48 @@ function arequire(filename="", command= :on)
   end
 end
 
+function alter_type(x, T::DataType)
+  ptr = convert(Ptr{Uint64}, pointer_from_objref(x))
+  ptr_array = pointer_to_array(ptr, 1)
+  ptr_array[1] = pointer_from_objref(T)
+  x
+end
+
+function extract_types(mod::Module)
+  types = (DataType=>Symbol)[]
+  for var_name in names(mod)
+    var = mod.(var_name)
+    if typeof(var)==DataType
+      types[var] = var_name
+    end
+  end
+  types
+end
+
+function switch_mods(vars, mod1, mod2)
+  types = extract_types(mod1)
+  for var in vars
+    var_type = typeof(var)
+    if haskey(types, var_type)
+      info("replacing $var")
+      type_name = types[var_type]
+      mod2_type = mod2.(type_name)
+      alter_type(var, mod2_type)
+    end
+  end
+end
+
 function deep_reload(file)
+  vars = [Main.(_) for _ in names(Main)]
+  mod_olds = Module[Main.(mod_name) for mod_name in module_watch]
   reload(file)
+  mod_news = Module[Main.(mod_name) for mod_name in module_watch]
+  for (mod_old, mod_new) in zip(mod_olds, mod_news)
+    @show mod_old
+    @show mod_new
+    @show vars
+    switch_mods(vars, mod_old, mod_new)
+  end
 end
 
 function areload(command= :force)
@@ -61,10 +102,10 @@ function areload_hook()
   areload(:use_state)
 end
 
-try:
-  import IJulia
+import IJulia
+try
   IJulia.push_preexecute_hook(areload_hook)
-catch err:
+catch err
   warn("Could not add IJulia hooks:\n$err")
 end
 
