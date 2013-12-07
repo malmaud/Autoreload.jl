@@ -1,8 +1,6 @@
-module autoreload
+module Autoreload
 
-export arequire, autoreload
-
-
+export arequire, areload
 
 const files = (String=>Float64)[]
 verbose_level = :warn
@@ -23,6 +21,8 @@ function arequire(filename="", command= :on)
     if haskey(files, filename)
       pop!(files, filename)    
     end
+  else
+    error("Command $command not recognized")
   end
 end
 
@@ -30,7 +30,7 @@ function deep_reload(file)
   reload(file)
 end
 
-function areload(command= :use_state)
+function areload(command= :force)
   global state
   if command == :use_state
     if state == :off
@@ -57,9 +57,13 @@ function areload(command= :use_state)
   end
 end
 
+function areload_hook()
+  areload(:use_state)
+end
+
 try:
   import IJulia
-  IJulia.push_preexecute_hook(areload)
+  IJulia.push_preexecute_hook(areload_hook)
 catch err:
   warn("Could not add IJulia hooks:\n$err")
 end
