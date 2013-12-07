@@ -62,7 +62,7 @@ and get back "Second version". If I have been using IJulia, the call to ```arelo
 
 Smart handling of reloaded type definitions
 =============================================
-If you reload a module that defines **and exports** types, any variables in global scope (the ```Main``` module) that have an exported type defined in that module will automatically have their type changed to refer to the new module's type. Here's an example:
+If you reload a module that defines  types, any variables in global scope (the ```Main``` module) that has a type exported by that module will automatically have its type changed to refer to the new module's corresponding type. Here's an example:
 
 A file called M.jl contains:
 
@@ -104,7 +104,7 @@ areload()
 M.f(my_var)
 ```
 
-This will print "Second version". If you had used ```Base.reload("M.jl")``` instead of reloading via Autoreload, "First version" would have been printed in both cases. 
+This will print "Second version". If you had used ```Base.reload("M.jl")``` instead of reloading via Autoreload, "First version" would have been printed in both cases, which is typically not what you want in an interactive development session. 
 
 Limitations
 ============
