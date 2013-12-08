@@ -109,3 +109,11 @@ This will print "Second version". If you had used ```Base.reload("M.jl")``` inst
 Limitations
 ============
 Autoreload.jl uses Julia's built-in ```reload``` command, and is subject to all the same limitations. The most noticable is not being be able to redefine types at the global scope. You can get around this by wrapping all type definitions in a module. References to functions and data in code that is reloaded are also potentially problematic. 
+
+
+Planned future features
+==========================
+
+* Handle dependecy between modules
+* Don't attempt to load a type declaration  in a required script if it conflicts with a definition in Main, but still load the rest of the script
+* Perform smart type reassignment for more than the variables in names(Main)
