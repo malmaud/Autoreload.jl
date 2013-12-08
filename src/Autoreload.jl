@@ -43,11 +43,38 @@ function aimport(filename)
   return
 end
 
-function alter_type(x, T::DataType)
+function unsafe_alter_type!(x, T::DataType)
   ptr = convert(Ptr{Uint64}, pointer_from_objref(x))
   ptr_array = pointer_to_array(ptr, 1)
   ptr_array[1] = pointer_from_objref(T)
   x
+end
+
+function alter_type(x, T::DataType, var_name="")
+  fields = names(T)
+  old_fields = names(typeof(x))
+  local x_new
+  try
+    x_new = T()
+    for field in fields
+      if field in old_fields
+        x_new.(field) = x.(field)
+      end
+    end
+  catch
+    args = Any[]
+    for field in fields
+      if field in old_fields
+        arg = x.(field)
+        push!(args, arg)
+      else
+        warn("Type alteration of $(var_name) could not be performed automatically")
+        return nothing
+      end
+    end
+    x_new =  T(args...)
+  end
+  return x_new
 end
 
 function extract_types(mod::Module)
@@ -61,14 +88,36 @@ function extract_types(mod::Module)
   types
 end
 
-function switch_mods(vars, mod1, mod2)
+function module_rewrite(m::Module, name::Symbol, value)
+  eval(m, :($name=$value))
+end
+
+function is_identical_type(t1::DataType, t2::DataType)
+  if length(names(t1)) == length(names(t2)) && 
+    all(names(t1).==names(t2)) && 
+    sizeof(t1)==sizeof(t2) && 
+    all(fieldoffsets(t1).==fieldoffsets(t2))
+    true
+  else
+    false
+  end
+end
+
+function switch_mods(vars, var_names, mod1, mod2)
   types = extract_types(mod1)
-  for var in vars
+  for (var, var_name) in zip(vars, var_names)
     var_type = typeof(var)
     if haskey(types, var_type)
       type_name = types[var_type]
       mod2_type = mod2.(type_name)
-      alter_type(var, mod2_type)
+      if is_identical_type(var_type, mod2_type)
+        unsafe_alter_type!(var, mod2_type)
+      else
+        var_new = alter_type(var, mod2_type, var_name)
+        if var_new!=nothing
+          module_rewrite(Main, var_name, var_new)
+        end
+      end
     end
   end
 end
@@ -88,7 +137,7 @@ function deep_reload(file)
   reload(file)
   mod_news = Module[Main.(mod_name) for mod_name in module_watch]
   for (mod_old, mod_new) in zip(mod_olds, mod_news)
-    switch_mods(vars, mod_old, mod_new)
+    switch_mods(vars, names(Main), mod_old, mod_new)
   end
 end
 
