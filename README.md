@@ -31,7 +31,7 @@ There is basic support for handling depencies between files which are to be relo
 arequire("M3", depends_on=["M1", "M2"])
 ```
 
-M3 will then be auto-reloaded if either M1.jl, M2.jl, or M3.jl is edited, will all three files being reloaded in the correct order. ```aimport``` also supports the depends_on keyword. A planned future addition to Autoreload is to automatically determining module dependcies. 
+M3 will then be auto-reloaded if either M1.jl, M2.jl, or M3.jl is edited, will all three files being reloaded in the correct order. ```aimport``` also supports the depends_on keyword. A planned future addition to Autoreload is to automatically determine module dependcies. 
 
 
 IJulia integration
