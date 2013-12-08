@@ -58,11 +58,11 @@ areload()
 x
 ```
 
-and get back "Second version". If I have been using IJulia, the call to ```areload()``` would have been unnecessary.
+and get back "Second version". If I had been using IJulia, the call to ```areload()``` would have been unnecessary.
 
 Smart handling of reloaded type definitions
 =============================================
-If you reload a module that defines  types, any variables in global scope (the ```Main``` module) that has a type exported by that module will automatically have its type changed to refer to the new module's corresponding type. Here's an example:
+If you reload a module that defines  types, any variables in global scope (the ```Main``` module) that have a type exported by that module will automatically have its type changed to refer to the new module's corresponding type. Here's an example:
 
 A file called M.jl contains:
 
@@ -104,7 +104,7 @@ areload()
 M.f(my_var)
 ```
 
-This will print "Second version". If you had used ```Base.reload("M.jl")``` instead of reloading via Autoreload, "First version" would have been printed in both cases, which is typically not what you want in an interactive development session. 
+This will print "Second version". If you had used ```Base.reload("M.jl")``` instead of reloading via Autoreload, "First version" would have been printed in first case, but second case would have resulted in an error.
 
 Limitations
 ============
