@@ -23,6 +23,16 @@ You can then use the ```arequire(filename)``` and ```aimport(modulename)``` comm
 
 A list of files marked for autoreloading can be seen by calling ```arequire()```. A file can be deleted from the autoreload list by calling ```arequire(filename, :off)```.
 
+Module dependencies
+====================
+There is basic support for handling depencies between files which are to be reloaded. For example, if a file M3.jl should be loaded only after loading files M1.jl and M2.jl (for example, if M3 imports M1 and M2), you can write
+
+```
+arequire("M3", depends_on=["M1", "M2"])
+```
+
+M3 will then be auto-reloaded if either M1.jl, M2.jl, or M3.jl is edited, will all three files being reloaded in the correct order. ```aimport``` also supports the depends_on keyword. A planned future addition to Autoreload is to automatically determining module dependcies. 
+
 
 IJulia integration
 ===================
