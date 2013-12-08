@@ -104,7 +104,7 @@ areload()
 M.f(my_var)
 ```
 
-This will print "Second version". If you had used ```Base.reload("M.jl")``` instead of reloading via Autoreload, "First version" would have been printed in both cases, which is typically not what you want in an interactive development session. 
+This will print "Second version". If you had used ```Base.reload("M.jl")``` instead of reloading via Autoreload, "First version" would have been printed in first case, but second case would have resulted in an error.
 
 Limitations
 ============
