@@ -47,7 +47,6 @@ function _collect_symbols(m, vars)
   for name in name_list
     var = m.(name)
     if should_symbol_recurse(var)
-      @show var
       _collect_symbols(var, vars)
     end
     if isa(var, Array) || isa(var, Tuple)
