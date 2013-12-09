@@ -72,7 +72,7 @@ and get back "Second version". If I had been using IJulia, the call to ```areloa
 
 Smart handling of reloaded type definitions
 =============================================
-If you reload a module that defines  types, any variables in global scope (the ```Main``` module) that have a type exported by that module will automatically have its type changed to refer to the new module's corresponding type. Here's an example:
+If you reload a module that defines  types, any variables accessible in the global scope (the ```Main``` module) that have a type defined in that module will automatically have its type changed to refer to the new module's corresponding type. Here's an example:
 
 A file called M.jl contains:
 
