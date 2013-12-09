@@ -22,6 +22,57 @@ function reload_mtime(filename)
   m
 end
 
+function should_symbol_recurse(var)
+  taboo = [Module, String, Dict, Array, Tuple]
+  for datatype in taboo
+    if isa(var, datatype)
+      return false
+    end
+  end
+  return true
+end
+
+function collect_symbols(m)
+  vars = {}
+  _collect_symbols(m, vars)
+  return vars
+end
+
+function _collect_symbols(m, vars)
+  if isa(m, Module)
+    name_list = names(m, true)
+  else
+    name_list = names(m)
+  end
+  for name in name_list
+    var = m.(name)
+    if should_symbol_recurse(var)
+      @show var
+      _collect_symbols(var, vars)
+    end
+    if isa(var, Array) || isa(var, Tuple)
+      for item in var
+        if should_symbol_recurse(item)
+          _collect_symbols(item, vars)
+        end
+        push!(vars, item)
+      end
+    end
+    if isa(var, Dict) #todo handle keys properly
+      for (key, value) in var
+        for item in (key, value)
+          if should_symbol_recurse(item)
+            _collect_symbols(item, vars)
+          end
+          push!(vars, item)
+        end
+      end
+    end
+    push!(vars, var)
+  end
+  vars
+end
+
 function arequire(filename=""; command= :on, depends_on=String[])
   if isempty(filename)
     return collect(keys(files))
@@ -87,7 +138,7 @@ end
 
 function extract_types(mod::Module)
   types = (DataType=>Symbol)[]
-  for var_name in names(mod)
+  for var_name in names(mod, true)
     var = mod.(var_name)
     if typeof(var)==DataType
       types[var] = var_name
@@ -111,9 +162,9 @@ function is_identical_type(t1::DataType, t2::DataType)
   end
 end
 
-function switch_mods(vars, var_names, mod1, mod2)
+function switch_mods(vars,  mod1, mod2)
   types = extract_types(mod1)
-  for (var, var_name) in zip(vars, var_names)
+  for var in vars
     var_type = typeof(var)
     if haskey(types, var_type)
       type_name = types[var_type]
@@ -121,19 +172,16 @@ function switch_mods(vars, var_names, mod1, mod2)
       if is_identical_type(var_type, mod2_type)
         unsafe_alter_type!(var, mod2_type)
       else
-        var_new = alter_type(var, mod2_type, var_name)
-        if var_new!=nothing
-          module_rewrite(Main, var_name, var_new)
-        end
+        # var_new = alter_type(var, mod2_type, var_name)
+        # if var_new!=nothing
+        #   module_rewrite(Main, var_name, var_new)
+        # end
+        warn("Couldn't alter $var")
       end
     end
   end
 end
 
-function module_load_order()
-  order = topological_sort(module_watch)
-  return order
-end
 
 function topological_sort{T}(outgoing::Dict{T, Vector{T}})
   # kahn topological sort
@@ -178,13 +226,13 @@ function topological_sort{T}(outgoing::Dict{T, Vector{T}})
 end
 
 function deep_reload(file)
-  vars = [Main.(_) for _ in names(Main)]
+  vars = collect_symbols(Main)
   local mod_olds
   try
     mod_olds = Module[Main.(mod_name) for mod_name in module_watch]
   catch err
     if verbose_level == :warn
-      warn("Type replacement error:\n $(err.msg)")
+      warn("Type replacement error:\n $(err)")
     end
     reload(file)
     return
@@ -192,7 +240,7 @@ function deep_reload(file)
   reload(file)
   mod_news = Module[Main.(mod_name) for mod_name in module_watch]
   for (mod_old, mod_new) in zip(mod_olds, mod_news)
-    switch_mods(vars, names(Main), mod_old, mod_new)
+    switch_mods(vars, mod_old, mod_new)
   end
 end
 
@@ -201,7 +249,7 @@ function try_reload(file)
     deep_reload(file)
   catch err
     if verbose_level == :warn
-      warn("Could not autoreload $(file):\n$(err.msg)")
+      warn("Could not autoreload $(file):\n$(err)")
     end
   end
 end
@@ -268,7 +316,7 @@ if isdefined(Main, :IJulia)
   try
     IJulia.push_preexecute_hook(areload_hook)
   catch err
-    warn("Could not add IJulia hooks:\n$(err.msg)")
+    warn("Could not add IJulia hooks:\n$(err)")
   end
 end
 
