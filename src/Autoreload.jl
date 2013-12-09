@@ -9,7 +9,9 @@ verbose_level = :warn
 state = :on
 
 function amodule(module_name)
-  push!(module_watch, module_name)
+  if !(module_name in module_watch)
+    push!(module_watch, module_name)
+  end
 end
 
 
@@ -72,11 +74,19 @@ function _collect_symbols(m, vars)
   vars
 end
 
+function remove_file(filename)
+  pop!(files, filename)
+  pop!(dependencies, filename)
+end
+
 function arequire(filename=""; command= :on, depends_on=String[])
   if isempty(filename)
     return collect(keys(files))
   end
   if command == :on
+    if filename in files
+      remove_file(filename)
+    end
     files[filename] = reload_mtime(filename)
     dependencies[filename] = depends_on
     for d in depends_on
@@ -87,7 +97,7 @@ function arequire(filename=""; command= :on, depends_on=String[])
     require(filename)
   elseif command == :off
     if haskey(files, filename)
-      pop!(files, filename)    
+      remove_file(filename)
     end
   else
     error("Command $command not recognized")
