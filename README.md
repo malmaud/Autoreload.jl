@@ -124,6 +124,5 @@ Autoreload.jl uses Julia's built-in ```reload``` command, and is subject to all 
 Planned future features
 ==========================
 
-* Handle dependecy between modules
 * Don't attempt to load a type declaration  in a required script if it conflicts with a definition in Main, but still load the rest of the script
-* Perform smart type reassignment for more than the variables in names(Main)
+
