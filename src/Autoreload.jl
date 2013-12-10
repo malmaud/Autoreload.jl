@@ -5,11 +5,17 @@ export arequire, areload, amodule, aimport
 type AFile
   should_reload::Bool
   mtime::Float64
+  deps::Vector{String}
+end
+
+type Dep
+  should_reload::Bool
+  name::String
 end
 
 const files = (String=>AFile)[]
 const module_watch = Symbol[]
-const dependencies = (String=>Vector{String})[]
+
 
 
 verbose_level = :warn
@@ -30,10 +36,38 @@ function standarize(filename)
   end
 end
 
+function _extract_deps(e::Expr, deps::Vector{Dep})
+  if e.head==:call
+    if e.args[1]==:include
+      if isa(e.args[2], String)
+        push!(deps, Dep(false, e.args[2]))
+      end
+    elseif e.args[1]==:require
+      if isa(e.args[2], String)
+        push!(deps, Dep(true, e.args[2]))
+      end
+    end
+  elseif e.head==:import
+    # push!(deps, Dep(true,  string(e.args[1])))
+  end
+  for arg in e.args
+    if isa(arg, Expr)
+      _extract_deps(arg, deps)
+    end
+  end
+end
+
+function extract_deps(e::Expr)
+  deps = Dep[]
+  _extract_deps(e, deps)
+  return deps
+end
+
+
 function find_file(filename; base_file=nothing)
 
   path =  Base.find_in_node1_path(filename)
-  if path == nothing
+  if path == nothing && base_file!=nothing
     base_file = Base.find_in_node1_path(base_file)
     path = joinpath(dirname(base_file), filename)
     if !isfile(path)
@@ -41,21 +75,6 @@ function find_file(filename; base_file=nothing)
     end
   end
   return path
-  # path = Base.find_in_node1_path(filename)
-  # if path == nothing
-  #   for file in keys(files)
-  #     @show file
-  #     base = Base.find_in_node1_path(file)
-  #     if base == nothing
-  #       continue
-  #     end
-  #     candidate = joinpath(dirname(base), filename)
-  #     if isfile(candidate) || isfile(string(candidate, ".jl"))
-  #       return candidate
-  #     end
-  #   end
-  # end
-  # return path
 end
 
 function reload_mtime(filename)
@@ -119,7 +138,13 @@ end
 
 function remove_file(filename)
   pop!(files, filename)
-  pop!(dependencies, filename)
+end
+
+function parse_file(filename)
+  path = find_file(filename)
+  source = string("begin\n", readall(open(path)), "\n end")
+  parsed = parse(source)
+  return parsed
 end
 
 function arequire(filename=""; command= :on, depends_on=String[])
@@ -136,8 +161,11 @@ function arequire(filename=""; command= :on, depends_on=String[])
     else
       should_reload = false
     end
-    files[filename] = AFile(should_reload, reload_mtime(filename))
-    dependencies[filename] = String[]
+    files[filename] = AFile(should_reload, reload_mtime(filename), String[])
+    parsed_file = parse_file(filename)
+    auto_depends = extract_deps(parsed_file)
+    auto_depends = [_.name for _ in auto_depends] #todo respect reload flag
+    depends_on = vcat(auto_depends, depends_on) 
     for d in depends_on
       d = standarize(d)
       if !haskey(files, d)
@@ -147,7 +175,7 @@ function arequire(filename=""; command= :on, depends_on=String[])
         end
         arequire(d, command = :on_depends)
       end
-      push!(dependencies[filename], d)
+      push!(files[filename].deps, d)
     end
     if files[filename].should_reload
       require(find_file(filename))
@@ -329,6 +357,12 @@ function is_equal_dict(d1::Dict, d2::Dict)
   return true
 end
 
+function get_dependency_graph()
+  deps = [filename=>afile.deps for (filename, afile) in files]
+  return deps
+end
+
+
 function areload(command= :force)
   global state
   if command == :use_state
@@ -341,6 +375,7 @@ function areload(command= :force)
   elseif command == :on
     state = :on
   end
+  dependencies = get_dependency_graph()
   file_order = topological_sort(dependencies)
   should_reload = [filename=>false for filename in file_order]
   for (i, file) in enumerate(file_order)
