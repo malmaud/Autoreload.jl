@@ -28,7 +28,7 @@ function standarize(filename)
   else
     string(filename, ".jl")
   end
-end  
+end
 
 function find_file(filename; base_file=nothing)
 
@@ -36,7 +36,6 @@ function find_file(filename; base_file=nothing)
   if path == nothing
     base_file = Base.find_in_node1_path(base_file)
     path = joinpath(dirname(base_file), filename)
-    @show path
     if !isfile(path)
       path = nothing
     end
