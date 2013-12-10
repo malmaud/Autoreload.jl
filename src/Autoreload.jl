@@ -2,11 +2,19 @@ module Autoreload
 
 export arequire, areload, amodule, aimport
 
-const files = (String=>Float64)[]
+type AFile
+  should_reload::Bool
+  mtime::Float64
+end
+
+const files = (String=>AFile)[]
 const module_watch = Symbol[]
 const dependencies = (String=>Vector{String})[]
+
+
 verbose_level = :warn
 state = :on
+
 
 function amodule(module_name)
   if !(module_name in module_watch)
@@ -14,9 +22,45 @@ function amodule(module_name)
   end
 end
 
+function standarize(filename)
+  if endswith(filename, ".jl")
+    filename
+  else
+    string(filename, ".jl")
+  end
+end  
+
+function find_file(filename; base_file=nothing)
+
+  path =  Base.find_in_node1_path(filename)
+  if path == nothing
+    base_file = Base.find_in_node1_path(base_file)
+    path = joinpath(dirname(base_file), filename)
+    @show path
+    if !isfile(path)
+      path = nothing
+    end
+  end
+  return path
+  # path = Base.find_in_node1_path(filename)
+  # if path == nothing
+  #   for file in keys(files)
+  #     @show file
+  #     base = Base.find_in_node1_path(file)
+  #     if base == nothing
+  #       continue
+  #     end
+  #     candidate = joinpath(dirname(base), filename)
+  #     if isfile(candidate) || isfile(string(candidate, ".jl"))
+  #       return candidate
+  #     end
+  #   end
+  # end
+  # return path
+end
 
 function reload_mtime(filename)
-  path = Base.find_in_node1_path(filename)
+  path = find_file(filename)
   m = mtime(path)
   if m==0.0
     warn("Could not find edit time of $filename")
@@ -83,18 +127,32 @@ function arequire(filename=""; command= :on, depends_on=String[])
   if isempty(filename)
     return collect(keys(files))
   end
-  if command == :on
+  filename = standarize(filename)
+  if command in [:on, :on_depends]
     if filename in files
       remove_file(filename)
     end
-    files[filename] = reload_mtime(filename)
-    dependencies[filename] = depends_on
-    for d in depends_on
-      if !haskey(files, d)
-        arequire(d)
-      end
+    if command==:on
+      should_reload = true
+    else
+      should_reload = false
     end
-    require(filename)
+    files[filename] = AFile(should_reload, reload_mtime(filename))
+    dependencies[filename] = String[]
+    for d in depends_on
+      d = standarize(d)
+      if !haskey(files, d)
+        d = find_file(d, base_file = filename)
+        if d==nothing
+          error("Dependent file not found")
+        end
+        arequire(d, command = :on_depends)
+      end
+      push!(dependencies[filename], d)
+    end
+    if files[filename].should_reload
+      require(find_file(filename))
+    end
   elseif command == :off
     if haskey(files, filename)
       remove_file(filename)
@@ -287,10 +345,10 @@ function areload(command= :force)
   file_order = topological_sort(dependencies)
   should_reload = [filename=>false for filename in file_order]
   for (i, file) in enumerate(file_order)
-    file_time = files[file]
+    file_time = files[file].mtime
     if reload_mtime(file) > file_time
       should_reload[file] = true
-      files[file] = reload_mtime(file)
+      files[file].mtime = reload_mtime(file)
     end
   end
   old_reload = copy(should_reload)
@@ -309,7 +367,7 @@ function areload(command= :force)
   end
 
   for file in file_order
-    if should_reload[file]
+    if should_reload[file] && files[file].should_reload
       try_reload(file)
     end
   end
