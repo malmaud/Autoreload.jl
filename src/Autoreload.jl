@@ -249,6 +249,7 @@ function is_identical_type(t1::DataType, t2::DataType)
   if length(names(t1)) == length(names(t2)) && 
     all(names(t1).==names(t2)) && 
     sizeof(t1)==sizeof(t2) && 
+    t1.parameters==t2.parameters && #verify this
     all(fieldoffsets(t1).==fieldoffsets(t2))
     true
   else
@@ -260,17 +261,15 @@ function switch_mods(vars,  mod1, mod2)
   types = extract_types(mod1)
   for var in vars
     var_type = typeof(var)
-    if haskey(types, var_type)
-      type_name = types[var_type]
-      mod2_type = mod2.(type_name)
-      if is_identical_type(var_type, mod2_type)
-        unsafe_alter_type!(var, mod2_type)
-      else
-        # var_new = alter_type(var, mod2_type, var_name)
-        # if var_new!=nothing
-        #   module_rewrite(Main, var_name, var_new)
-        # end
-        warn("Couldn't alter $var")
+    for (old_type, type_name) in types
+      if isa(var, old_type)
+        type_name = types[old_type]
+        mod2_type = mod2.(type_name){var_type.parameters...} #todo make work for parametric types
+        if is_identical_type(var_type, mod2_type)
+          unsafe_alter_type!(var, mod2_type)
+        else
+          warn("Couldn't alter $var")
+        end
       end
     end
   end
