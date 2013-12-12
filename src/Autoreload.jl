@@ -37,17 +37,17 @@ function standarize(filename)
 end
 
 function _extract_deps(e::Expr, deps::Vector{Dep})
-  if e.head==:call
-    if e.args[1]==:include
+  if e.head == :call
+    if e.args[1] == :include
       if isa(e.args[2], String)
         push!(deps, Dep(false, e.args[2]))
       end
-    elseif e.args[1]==:require
+    elseif e.args[1] == :require
       if isa(e.args[2], String)
         push!(deps, Dep(true, e.args[2]))
       end
     end
-  elseif e.head==:import
+  elseif e.head == :import
     # push!(deps, Dep(true,  string(e.args[1])))
   end
   for arg in e.args
@@ -98,11 +98,12 @@ end
 
 function collect_symbols(m)
   vars = {}
-  _collect_symbols(m, vars)
+  _collect_symbols(m, vars, 1)
   return vars
 end
 
-function _collect_symbols(m, vars)
+function _collect_symbols(m, vars, depth)
+  # @show depth
   if isa(m, Module)
     name_list = names(m, true)
   else
@@ -110,13 +111,17 @@ function _collect_symbols(m, vars)
   end
   for name in name_list
     var = m.(name)
+    if var in vars
+      continue
+    end
+    push!(vars, var)
     if should_symbol_recurse(var)
-      _collect_symbols(var, vars)
+      _collect_symbols(var, vars, depth+1)
     end
     if isa(var, Array) || isa(var, Tuple)
       for item in var
         if should_symbol_recurse(item)
-          _collect_symbols(item, vars)
+          _collect_symbols(item, vars, depth+1)
         end
         push!(vars, item)
       end
@@ -125,13 +130,12 @@ function _collect_symbols(m, vars)
       for (key, value) in var
         for item in (key, value)
           if should_symbol_recurse(item)
-            _collect_symbols(item, vars)
+            _collect_symbols(item, vars, depth+1)
           end
           push!(vars, item)
         end
       end
     end
-    push!(vars, var)
   end
   vars
 end
@@ -249,8 +253,16 @@ function is_identical_type(t1::DataType, t2::DataType)
   if length(names(t1)) == length(names(t2)) && 
     all(names(t1).==names(t2)) && 
     sizeof(t1)==sizeof(t2) && 
-    t1.parameters==t2.parameters && #verify this
+    #t1.parameters==t2.parameters && #verify this
     all(fieldoffsets(t1).==fieldoffsets(t2))
+    true
+  else
+    false
+  end
+end
+
+function is_same_type_base(t1::DataType, t2::DataType)
+  if t1.name == t2.name
     true
   else
     false
@@ -261,10 +273,13 @@ function switch_mods(vars,  mod1, mod2)
   types = extract_types(mod1)
   for var in vars
     var_type = typeof(var)
+    if !isa(var_type,  DataType)
+      continue
+    end
     for (old_type, type_name) in types
-      if isa(var, old_type)
-        type_name = types[old_type]
-        mod2_type = mod2.(type_name){var_type.parameters...} #todo make work for parametric types
+      if is_same_type_base(var_type, old_type)
+        mod2_raw_type = mod2.(type_name)
+        mod2_type = mod2_raw_type{var_type.parameters...}
         if is_identical_type(var_type, mod2_type)
           unsafe_alter_type!(var, mod2_type)
         else
@@ -294,6 +309,7 @@ function topological_sort{T}(outgoing::Dict{T, Vector{T}})
     end
   end
   S = T[]
+
   outgoing_counts = (T=>Int)[]
   for (child, parents) in outgoing
     if isempty(parents)
@@ -338,13 +354,14 @@ function deep_reload(file)
 end
 
 function try_reload(file)
-  try
-    deep_reload(file)
-  catch err
-    if verbose_level == :warn
-      warn("Could not autoreload $(file):\n$(err)")
-    end
-  end
+  deep_reload(file)
+  # try
+  #   deep_reload(file)
+  # catch err
+  #   if verbose_level == :warn
+  #     warn("Could not autoreload $(file):\n$(err)")
+  #   end
+  # end
 end
 
 function is_equal_dict(d1::Dict, d2::Dict)
