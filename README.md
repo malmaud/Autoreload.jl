@@ -5,10 +5,11 @@ Autoreload is a package for autoreloading modules in IJulia. It is intended to a
 
 Installation
 =============
-In your ~/.julia directory, type 
+In a Julia session, type
 
-```
-git clone git@github.com:malmaud/Autoreload.jl.git
+```julia
+Pkg.update()
+Pkg.clone("Autoreload")
 ```
 
 Usage
