@@ -86,6 +86,9 @@ This behavior can be disabled by running ```aoptions_set(constants=true)```.
 
 Smart handling of reloaded type definitions
 =============================================
+If you try to reload a type that is already defined in the global scope (e.g, you are auto-reloading a file that defines a type not wrapped in a module), you would normally get an error about redefining a constant. Autoreload will automatically remove the type declaration before reloading your script, avoiding an error.
+
+
 If you reload a module that defines  types, any variables accessible in the global scope (the ```Main``` module) that have a type defined in that module will automatically have its type changed to refer to the new module's corresponding type. Here's an example:
 
 A file called M.jl contains:
@@ -132,11 +135,4 @@ This will print "Second version". If you had used ```Base.reload("M.jl")``` inst
 
 Limitations
 ============
-Autoreload.jl uses Julia's built-in ```reload``` command, and is subject to all the same limitations. The most noticable is not being be able to redefine types at the global scope. You can get around this by wrapping all type definitions in a module. References to functions and data in code that is reloaded are also potentially problematic. 
-
-
-Planned future features
-==========================
-
-* Don't attempt to load a type declaration  in a required script if it conflicts with a definition in Main, but still load the rest of the script
-
+Autoreload.jl uses Julia's built-in ```reload``` command, and as such is subject to various limitations inherent in the current Julia architecture. Reloaded type reassignment does not always reassign immutable types correctly, but this will be fixed.
