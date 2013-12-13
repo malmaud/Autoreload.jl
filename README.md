@@ -72,13 +72,13 @@ and get back "Second version". If I had been using IJulia, the call to ```areloa
 
 Package handling
 ==================
-Say you are creating a package organized on disk as ~/.julia/MyPackage/src/[source files].jl. One of the source files will be called MyPackage.jl and is typically loaded to load the rest of the package. If Autoreload finds a file called src/MyPackageCode.jl, however, then when reloading the package, the package will be reloaded via MyPackageCode.jl instead of MyPackage.jl. This allows you to only define constants and code in MyPackage.jl, while MyPackageCode.jl only reloads code. This helps to avoid issues from reloading constants. Here is an example
+Say you are creating a package organized on disk as ~/.julia/MyPackage/src/[source files].jl. One of the source files will be called MyPackage.jl and is typically loaded to load the rest of the package. If Autoreload finds a file called src/MyPackageCode.jl, however, then when reloading the package, the package will be reloaded via MyPackage_reload.jl instead of MyPackage.jl. This allows you to only define constants and code in MyPackage.jl, while MyPackage_reload.jl only reloads code. This helps to avoid issues from reloading constants. Here is an example
 
 ```julia
 aimport("MyPackage") # ~/.julia/MyPackage/src/MyPackage.jl is executed
 ...
 # make an edit to some file in MyPackage
-areload() # ~/.julia/MyPackage/src/MyPackageCode.jl is executed 
+areload() # ~/.julia/MyPackage/src/MyPackage_reload.jl is executed 
 ```
 
 This behavior can be disabled by running ```aoptions_set(constants=true)```.
