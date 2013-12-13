@@ -34,7 +34,7 @@ function aoptions_set(;kwargs...)
   options
 end
 
-aoptions_get() = options
+aoptions_get() = copy(options)
 
 
 function find_in_path(name::String; constants::Bool=true)
@@ -135,7 +135,7 @@ function reload_mtime(filename)
 end
 
 function should_symbol_recurse(var)
-  taboo = [Module, String, Dict, Array, Tuple]
+  taboo = [Module, String, Dict, Array, Tuple, DataType]
   for datatype in taboo
     if isa(var, datatype)
       return false
@@ -293,6 +293,21 @@ function extract_types(mod::Module)
   types
 end
 
+function remove_constants(e_block::Expr, taboo::Vector)
+  e_eval = {}
+  for e in e_block.args
+    if isa(e, Expr) && e.head==:type
+      if e.args[2] in taboo
+        warn("Removing redefinition of $(e.args[2])")
+        continue
+      end
+    end
+    push!(e_eval, e)
+  end
+  new_e = Expr(e_block.head, e_eval, e_block.typ)
+  return e_eval
+end
+
 function module_rewrite(m::Module, name::Symbol, value)
   eval(m, :($name=$value))
 end
@@ -385,6 +400,8 @@ end
 function deep_reload(file; kwargs...)
   file = find_in_path(file; kwargs...)
   vars = collect_symbols(Main)
+  main_types = extract_types(Main)
+
   local mod_olds
   try
     mod_olds = Module[Main.(mod_name) for mod_name in module_watch]
@@ -395,7 +412,14 @@ function deep_reload(file; kwargs...)
     reload(file)
     return
   end
-  reload(file)
+  file_path = find_file(file)
+  file_parse = parse_file(file_path)
+  taboo = collect(values(main_types))
+  expr_list = remove_constants(file_parse, taboo)
+  for e in expr_list
+    eval(Main, e)
+  end
+  #reload(file)
   mod_news = Module[Main.(mod_name) for mod_name in module_watch]
   for (mod_old, mod_new) in zip(mod_olds, mod_news)
     switch_mods(vars, mod_old, mod_new)
