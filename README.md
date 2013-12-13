@@ -1,7 +1,7 @@
 Autoreload
 ===============
 
-Autoreload is a package for autoreloading modules in IJulia. It is intended to allow a workflow where you develop Julia source in some editor, while interacting with it via an IJulia notebook or the command-line REPL. It is modeled after IPython's autoreload extension.
+Autoreload is a package for autoreloading modules in IJulia. It is intended to allow a workflow where you develop Julia source in some editor, while interacting with it via an IJulia notebook or the command-line REPL. It helps get around annoying type redefinition issues. It is modeled after IPython's autoreload extension.
 
 Installation
 =============
