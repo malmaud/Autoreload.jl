@@ -1,6 +1,6 @@
 module Autoreload
 
-export arequire, areload, amodule, aimport
+export arequire, areload, amodule, aimport, aoptions_set, aoptions_get
 
 type AFile
   should_reload::Bool
@@ -15,8 +15,57 @@ end
 
 const files = (String=>AFile)[]
 const module_watch = Symbol[]
+const options = [(:constants, false)]
+
+function aoptions_set(;kwargs...)
+  global options
+  for (key, value) in kwargs
+    option_used = false
+    for (i, (opt_key, opt_value)) in enumerate(options)
+      if key==opt_key
+        options[i] = (key, value)
+        option_used = true
+      end
+    end
+    if !option_used
+      error("Option $key not recognized")
+    end
+  end
+  options
+end
+
+aoptions_get() = options
 
 
+function find_in_path(name::String; constants::Bool=true)
+    isabspath(name) && return name
+    isfile(name) && return abspath(name)
+    base = name
+    if endswith(name,".jl")
+        base = name[1:end-3]
+    else
+        name = string(base,".jl")
+        isfile(name) && return abspath(name)
+    end
+    for prefix in [Pkg.dir(), LOAD_PATH]
+        path = joinpath(prefix, name)
+        if constants
+          file_name = name
+        else
+          file_name = string(name[1:end-3], "Code", ".jl")
+          if !isfile(prefix, base, "src", file_name)
+            warn("Code-only version of $name not found")
+            file_name = name
+          end
+        end
+        isfile(path) && return abspath(path)
+        path = joinpath(prefix, base, "src", file_name)
+        isfile(path) && return abspath(path)
+        path = joinpath(prefix, name, "src", file_name)
+        isfile(path) && return abspath(path)
+    end
+    return nothing
+end
 
 verbose_level = :warn
 state = :on
@@ -64,9 +113,8 @@ function extract_deps(e::Expr)
 end
 
 
-function find_file(filename; base_file=nothing)
-
-  path =  Base.find_in_node1_path(filename)
+function find_file(filename; base_file=nothing, constants=true)
+  path =  find_in_path(filename, constants=constants)
   if path == nothing && base_file!=nothing
     base_file = Base.find_in_node1_path(base_file)
     path = joinpath(dirname(base_file), filename)
@@ -334,7 +382,8 @@ function topological_sort{T}(outgoing::Dict{T, Vector{T}})
   return order
 end
 
-function deep_reload(file)
+function deep_reload(file; kwargs...)
+  file = find_in_path(file; kwargs...)
   vars = collect_symbols(Main)
   local mod_olds
   try
@@ -353,8 +402,8 @@ function deep_reload(file)
   end
 end
 
-function try_reload(file)
-  deep_reload(file)
+function try_reload(file; kwargs...)
+  deep_reload(file; kwargs...)
   # try
   #   deep_reload(file)
   # catch err
@@ -379,7 +428,7 @@ function get_dependency_graph()
 end
 
 
-function areload(command= :force)
+function areload(command= :force; kwargs...)
   global state
   if command == :use_state
     if state == :off
@@ -418,7 +467,7 @@ function areload(command= :force)
 
   for file in file_order
     if should_reload[file] && files[file].should_reload
-      try_reload(file)
+      try_reload(file; constants=false, kwargs...)
     end
   end
   return
