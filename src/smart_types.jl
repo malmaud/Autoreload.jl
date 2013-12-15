@@ -1,5 +1,5 @@
 function should_symbol_recurse(var)
-  taboo = [Module, String, Dict, Array, Tuple, DataType]
+  taboo = [Module, String, Dict, Array, Tuple, DataType, Function]
   for datatype in taboo
     if isa(var, datatype)
       return false
@@ -28,6 +28,7 @@ function _collect_symbols(m, vars, depth)
     end
     push!(vars, var)
     if should_symbol_recurse(var)
+      @show var
       _collect_symbols(var, vars, depth+1)
     end
     if isa(var, Array) || isa(var, Tuple)
