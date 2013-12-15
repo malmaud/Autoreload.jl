@@ -28,7 +28,6 @@ function _collect_symbols(m, vars, depth)
     end
     push!(vars, var)
     if should_symbol_recurse(var)
-      @show var
       _collect_symbols(var, vars, depth+1)
     end
     if isa(var, Array) || isa(var, Tuple)
