@@ -41,13 +41,15 @@ function reload_module(name, e)
             break
         end
     end
-    create_module(m_tmp, e)
+    create_module(m_tmp, Expr(:block)) # won't work with absolute references
     m = nothing
     if name in names(Main, true)
         m = Main.(name)
         if isa(m, Module)
             e_i = eval_includes(e)
-            e_t = strip_types(m, e_i, Main.(m_tmp))
+            create_module(name, e, Main.(m_tmp))
+            e_t = strip_types(m, e_i, Main.(m_tmp).(name))
+            #module_rewrite(Main, name, m)
             if e_t != nothing
                 for arg in e_t.args
                     eval(m, arg)
@@ -67,13 +69,27 @@ end
 function eval_includes(e_block)
     e_list = {}
     for e in e_block.args
-        if isa(e, Expr) && e.head == :call && e.args[1] == :include &&
-            isa(e.args[2], String)
-
-            f = e.args[2]
-            f_p = parse_file(f)
-            for arg in f_p.args
-                push!(e_list, arg)
+        if isa(e, Expr) && 
+            e.head == :call && 
+            e.args[1] == :include 
+            local f
+            if isa(e.args[2], String)
+                f = e.args[2]
+            elseif isa(e.args[2], Expr)
+                try
+                    f = eval(Main, e.args[2]) # dangerous to eval in Main
+                catch err
+                    warn("include statement could not be processed:\n $err")
+                    f = nothing
+                end
+            end
+            if f != nothing
+                f_p = parse_file(f)
+                for arg in f_p.args
+                    push!(e_list, arg)
+                end
+            else
+                push!(e_list, e)
             end
             #push!(e_list, f_p)
         elseif isa(e, Expr) && e.head == :module
@@ -87,14 +103,17 @@ function eval_includes(e_block)
 end
 
 
-function block_wrap(e_set::Array)
-    Expr(:block, e_set...)
-end
-
+block_wrap(e_set::Array) = Expr(:block, e_set...)
 block_wrap(e::Expr) = e
 
 function get_type_name(e::Expr)
-    name = e.args[2]
+    if e.head == :type
+        name = e.args[2]
+    elseif e.head == :abstract
+        name = e.args[1]
+    else
+        error("Name of type could not be extracted: \n$e")
+    end
     if isa(name, Expr)
         name = name.args[1]
     end
@@ -105,10 +124,8 @@ function strip_types(m, e_block, m_new)
     e_stripped = Any[]
     for e in e_block.args
         do_strip = false
-        if isa(e, Expr) && e.head == :type
-            println(e)
+        if isa(e, Expr) && e.head in [:type, :abstract]
             name = get_type_name(e) #e.args[2]
-            fields = e.args[3]
             if name in names(m, true)
                 t = m.(name)
                 if isa(t, DataType)
@@ -127,11 +144,11 @@ function strip_types(m, e_block, m_new)
     block_wrap(e_stripped)
 end
 
-function create_module(name, e)
+function create_module(name, e, base=Main)
     if name == :Main
         eval(Main, e)
     else
-        eval(Main, Expr(:module, true, name, e))
+        eval(base, Expr(:module, true, name, e))
     end
 end
 
@@ -163,6 +180,16 @@ function collect_symbols(m)
     return vars
 end
 
+function try_getfield(m, name)
+    try
+        var = m.(name)
+    catch err
+        warn("Symbol collection warning: \n$err")
+        return (nothing, false)
+    end
+    return (var, true)
+end
+
 function _collect_symbols(m, vars, depth)
     # @show depth
     if isa(m, Module)
@@ -171,7 +198,8 @@ function _collect_symbols(m, vars, depth)
         name_list = names(m)
     end
     for name in name_list
-        var = m.(name)
+        var, has_var = try_getfield(m, name)
+        has_var || continue
         if var in vars
             continue
         end
@@ -238,7 +266,8 @@ end
 function extract_types(mod::Module)
     types = (DataType=>Symbol)[]
     for var_name in names(mod, true)
-        var = mod.(var_name)
+        var, has_var = try_getfield(mod, var_name)
+        has_var || continue
         if typeof(var)==DataType
             types[var] = var_name
         end
@@ -247,9 +276,10 @@ function extract_types(mod::Module)
 end
 
 function is_identical_type(t1::DataType, t2::DataType)
-    if length(names(t1)) == length(names(t2)) && 
+    if t1.name == t2.name &&
+        length(names(t1)) == length(names(t2)) && 
         all(names(t1).==names(t2)) && 
-        sizeof(t1)==sizeof(t2) && 
+        #sizeof(t1)==sizeof(t2) && 
         #t1.parameters==t2.parameters && #verify this
         all(fieldoffsets(t1).==fieldoffsets(t2))
         true
