@@ -1,118 +1,268 @@
 function should_symbol_recurse(var)
-  taboo = [Module, String, Dict, Array, Tuple, DataType, Function]
-  for datatype in taboo
-    if isa(var, datatype)
-      return false
+    taboo = [Module, String, Dict, Array, Tuple, DataType, Function]
+    for datatype in taboo
+        if isa(var, datatype)
+            return false
+        end
     end
-  end
-  return true
+    return true
+end
+
+function module_rewrite(m::Module, name::Symbol, value)
+    eval(m, :($name=$value))
+end
+
+function switch_mods(vars, mod1, mod2)
+    types = extract_types(mod1)
+    for var in vars
+        var_type = typeof(var)
+        if !isa(var_type,    DataType)
+            continue
+        end
+        for (old_type, type_name) in types
+            if is_same_type_base(var_type, old_type)
+                mod2_raw_type = mod2.(type_name)
+                mod2_type = mod2_raw_type{var_type.parameters...}
+                if is_identical_type(var_type, mod2_type)
+                    unsafe_alter_type!(var, mod2_type)
+                else
+                    warn("Couldn't alter $var")
+                end
+            end
+        end
+    end
+end
+
+function reload_module(name, e)
+    local m_tmp
+    while true
+        m_tmp = symbol("_m_tmp_$(rand(1:100000))") #todo must be better way to do this
+        if !(m_tmp in names(Main, true))
+            break
+        end
+    end
+    create_module(m_tmp, e)
+    m = nothing
+    if name in names(Main, true)
+        m = Main.(name)
+        if isa(m, Module)
+            e_i = eval_includes(e)
+            e_t = strip_types(m, e_i, Main.(m_tmp))
+            if e_t != nothing
+                for arg in e_t.args
+                    eval(m, arg)
+                end
+                return
+            end
+        end
+    end
+    create_module(name, e)
+    if m != nothing
+        if options[:smart_types]
+            switch_types(m, Main.(name))
+        end
+    end
+end
+
+function eval_includes(e_block)
+    e_list = {}
+    for e in e_block.args
+        if isa(e, Expr) && e.head == :call && e.args[1] == :include &&
+            isa(e.args[2], String)
+
+            f = e.args[2]
+            f_p = parse_file(f)
+            for arg in f_p.args
+                push!(e_list, arg)
+            end
+            #push!(e_list, f_p)
+        elseif isa(e, Expr) && e.head == :module
+            f_p = eval_includes(e.args[3])
+            push!(e_list, Expr(:module, e.args[1], e.args[2], f_p))
+        else
+            push!(e_list, e)
+        end
+    end
+    block_wrap(e_list)
+end
+
+
+function block_wrap(e_set::Array)
+    Expr(:block, e_set...)
+end
+
+block_wrap(e::Expr) = e
+
+function get_type_name(e::Expr)
+    name = e.args[2]
+    if isa(name, Expr)
+        name = name.args[1]
+    end
+    name
+end
+
+function strip_types(m, e_block, m_new)
+    e_stripped = Any[]
+    for e in e_block.args
+        do_strip = false
+        if isa(e, Expr) && e.head == :type
+            println(e)
+            name = get_type_name(e) #e.args[2]
+            fields = e.args[3]
+            if name in names(m, true)
+                t = m.(name)
+                if isa(t, DataType)
+                    if is_identical_type(t, m_new.(name))
+                        do_strip = true
+                    else
+                        return nothing
+                    end
+                end
+            end
+        end
+        if !do_strip
+            push!(e_stripped, e)
+        end
+    end
+    block_wrap(e_stripped)
+end
+
+function create_module(name, e)
+    if name == :Main
+        eval(Main, e)
+    else
+        eval(Main, Expr(:module, true, name, e))
+    end
+end
+
+function switch_types(m_old, m_new)
+    symbols = collect_symbols(Main)
+    switch_mods(symbols, m_old, m_new)
+end
+
+function extract_modules(e_block)
+    modules = (Symbol=>Any)[]
+    in_main = {}
+    for e in e_block.args
+        isa(e, Expr) || continue
+        if e.head == :module
+            name = e.args[2]
+            m_e = e.args[3]
+            modules[name] = m_e
+        else
+            push!(in_main, e)
+        end
+    end
+    modules[:Main] = block_wrap(in_main)
+    return modules
 end
 
 function collect_symbols(m)
-  vars = {}
-  _collect_symbols(m, vars, 1)
-  return vars
+    vars = {}
+    _collect_symbols(m, vars, 1)
+    return vars
 end
 
 function _collect_symbols(m, vars, depth)
-  # @show depth
-  if isa(m, Module)
-    name_list = names(m, true)
-  else
-    name_list = names(m)
-  end
-  for name in name_list
-    var = m.(name)
-    if var in vars
-      continue
+    # @show depth
+    if isa(m, Module)
+        name_list = names(m, true)
+    else
+        name_list = names(m)
     end
-    push!(vars, var)
-    if should_symbol_recurse(var)
-      _collect_symbols(var, vars, depth+1)
-    end
-    if isa(var, Array) || isa(var, Tuple)
-      for item in var
-        if should_symbol_recurse(item)
-          _collect_symbols(item, vars, depth+1)
+    for name in name_list
+        var = m.(name)
+        if var in vars
+            continue
         end
-        push!(vars, item)
-      end
-    end
-    if isa(var, Dict) #todo handle keys properly
-      for (key, value) in var
-        for item in (key, value)
-          if should_symbol_recurse(item)
-            _collect_symbols(item, vars, depth+1)
-          end
-          push!(vars, item)
+        push!(vars, var)
+        if should_symbol_recurse(var)
+            _collect_symbols(var, vars, depth+1)
         end
-      end
+        if isa(var, Array) || isa(var, Tuple)
+            for item in var
+                if should_symbol_recurse(item)
+                    _collect_symbols(item, vars, depth+1)
+                end
+                push!(vars, item)
+            end
+        end
+        if isa(var, Dict) #todo handle keys properly
+            for (key, value) in var
+                for item in (key, value)
+                    if should_symbol_recurse(item)
+                        _collect_symbols(item, vars, depth+1)
+                    end
+                    push!(vars, item)
+                end
+            end
+        end
     end
-  end
-  vars
+    vars
 end
 
 function unsafe_alter_type!(x, T::DataType)
-  ptr = convert(Ptr{Uint64}, pointer_from_objref(x))
-  ptr_array = pointer_to_array(ptr, 1)
-  ptr_array[1] = pointer_from_objref(T)
-  x
+    ptr = convert(Ptr{Uint64}, pointer_from_objref(x))
+    ptr_array = pointer_to_array(ptr, 1)
+    ptr_array[1] = pointer_from_objref(T)
+    x
 end
 
 function alter_type(x, T::DataType, var_name="")
-  fields = names(T)
-  old_fields = names(typeof(x))
-  local x_new
-  try
-    x_new = T()
-    for field in fields
-      if field in old_fields
-        x_new.(field) = x.(field)
-      end
+    fields = names(T)
+    old_fields = names(typeof(x))
+    local x_new
+    try
+        x_new = T()
+        for field in fields
+            if field in old_fields
+                x_new.(field) = x.(field)
+            end
+        end
+    catch
+        args = Any[]
+        for field in fields
+            if field in old_fields
+                arg = x.(field)
+                push!(args, arg)
+            else
+                warn("Type alteration of $(var_name) could not be performed automatically")
+                return nothing
+            end
+        end
+        x_new =    T(args...)
     end
-  catch
-    args = Any[]
-    for field in fields
-      if field in old_fields
-        arg = x.(field)
-        push!(args, arg)
-      else
-        warn("Type alteration of $(var_name) could not be performed automatically")
-        return nothing
-      end
-    end
-    x_new =  T(args...)
-  end
-  return x_new
+    return x_new
 end
 
 function extract_types(mod::Module)
-  types = (DataType=>Symbol)[]
-  for var_name in names(mod, true)
-    var = mod.(var_name)
-    if typeof(var)==DataType
-      types[var] = var_name
+    types = (DataType=>Symbol)[]
+    for var_name in names(mod, true)
+        var = mod.(var_name)
+        if typeof(var)==DataType
+            types[var] = var_name
+        end
     end
-  end
-  types
+    types
 end
 
 function is_identical_type(t1::DataType, t2::DataType)
-  if length(names(t1)) == length(names(t2)) && 
-    all(names(t1).==names(t2)) && 
-    sizeof(t1)==sizeof(t2) && 
-    #t1.parameters==t2.parameters && #verify this
-    all(fieldoffsets(t1).==fieldoffsets(t2))
-    true
-  else
-    false
-  end
+    if length(names(t1)) == length(names(t2)) && 
+        all(names(t1).==names(t2)) && 
+        sizeof(t1)==sizeof(t2) && 
+        #t1.parameters==t2.parameters && #verify this
+        all(fieldoffsets(t1).==fieldoffsets(t2))
+        true
+    else
+        false
+    end
 end
 
+
 function is_same_type_base(t1::DataType, t2::DataType)
-  if t1.name == t2.name
-    true
-  else
-    false
-  end
+    if t1.name == t2.name
+        true
+    else
+        false
+    end
 end
