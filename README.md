@@ -20,19 +20,21 @@ First load the package:
 using Autoreload
 ```
 
-You can then use the ```arequire(filename)``` and ```aimport(modulename)``` commands where you normally would have used ```require``` and ```import```. If you then call ```areload()```, all source included with ```arequire``` and ```aimport``` will be reloaded if the source files have been modified since their last reload. 
+You can then use the ```arequire(filename)```  where you normally would have used ```require``` or ```import```. If you then call ```areload()```, all files included with ```arequire``` will be reloaded if the source files have been modified since their last reload. 
+
+You can use ```smart_reload(filename)``` to reload ```filename``` in a way that avoids type redefinition issues. ```smart_reload``` is automatically called by ```areload```, but you can use it even for files and packages you are not auto-reloading.
 
 A list of files marked for autoreloading can be seen by calling ```arequire()```. A file can be deleted from the autoreload list by calling ```arequire(filename, :off)```.
 
 Module dependencies
 ====================
-There is basic support for handling depencies between files which are to be reloaded. For example, if a file M3.jl should be loaded only after loading files M1.jl and M2.jl (for example, if M3 imports M1 and M2), you can write
+There is basic support for handling dependencies between files which are to be reloaded. For example, if a file M3.jl should be loaded only after loading files M1.jl and M2.jl (for example, if M3 imports M1 and M2), you can write
 
 ```
 arequire("M3", depends_on=["M1", "M2"])
 ```
 
-M3 will then be auto-reloaded if either M1.jl, M2.jl, or M3.jl is edited, will all three files being reloaded in the correct order. ```aimport``` also supports the depends_on keyword. If an autoreloaded file has ```include``` statements, any file it includes will automatically be determined to be a dependency. This makes it convenient to interactively write a package by calling ```aimport``` with the package name and including the rest of the package files with ```include``` statements in the main package source file.
+M3 will then be auto-reloaded if either M1.jl, M2.jl, or M3.jl is edited, will all three files being reloaded in the correct order.  If an autoreloaded file has ```include``` statements, any file it includes will automatically be determined to be a dependency. This makes it convenient to interactively write a package by calling ```aimport``` with the package name and including the rest of the package files with ```include``` statements in the main package source file.
 
 
 IJulia integration
@@ -73,24 +75,26 @@ and get back "Second version". If I had been using IJulia, the call to ```areloa
 
 Package handling
 ==================
-Say you are creating a package organized on disk as ~/.julia/MyPackage/src/[source files].jl. One of the source files will be called MyPackage.jl and is typically loaded to load the rest of the package. If Autoreload finds a file called src/MyPackageCode.jl, however, then when reloading the package, the package will be reloaded via MyPackage_reload.jl instead of MyPackage.jl. This allows you to only define constants and code in MyPackage.jl, while MyPackage_reload.jl only reloads code. This helps to avoid issues from reloading constants. Here is an example
+Say you are creating a package organized on disk as ~/.julia/MyPackage/src/[source files].jl. One of the source files will be called MyPackage.jl and is typically loaded to load the rest of the package. If Autoreload finds a file called ``src/MyPackage_reload.jl``, however, then when reloading the package, the package will be reloaded via ``MyPackage_reload.jl`` instead of MyPackage.jl. This allows you to only define constants and code in MyPackage.jl, while MyPackage_reload.jl only reloads code. This allows you to specify custom logic for reloading your package. Here is an example
 
 ```julia
-aimport("MyPackage") # ~/.julia/MyPackage/src/MyPackage.jl is executed
+arequire("MyPackage") # ~/.julia/MyPackage/src/MyPackage.jl is loaded
 ...
-# make an edit to some file in MyPackage
-areload() # ~/.julia/MyPackage/src/MyPackage_reload.jl is executed 
+# make an edit to some file included in MyPackage.jl
+areload() # ~/.julia/MyPackage/src/MyPackage_reload.jl is executed instead of ~/.julia/MyPackage/src/MyPackage.jl 
 ```
 
 This behavior can be disabled by running ```aoptions_set(constants=true)```.
 
 
-Smart handling of reloaded type definitions
+Smart reloading to avoid type redefinition errors
 =============================================
-If you try to reload a type that is already defined in the global scope (e.g, you are auto-reloading a file that defines a type not wrapped in a module), you would normally get an error about redefining a constant. Autoreload will automatically remove the type declaration before reloading your script, avoiding an error.
+Autoreload provides a function called ``smart_reload``. It has similar semantics to ``reload``, but avoids some common issues that make ``reload`` inconvenient for interactive development. 
+
+If you try to reload a type that is already defined in the global scope (e.g, you are auto-reloading a file that defines a type not wrapped in a module), you would normally get an error about redefining a constant. Autoreload will automatically remove the type declaration before reloading your script it is identical to a type that is already defined, avoiding an error.
 
 
-If you reload a module that defines  types, any variables accessible in the global scope (the ```Main``` module) that have a type defined in that module will automatically have its type changed to refer to the new module's corresponding type. Here's an example:
+If you reload a module that defines types, then those type definitions will be stripped out of the module, and the remainnig expressions in the reloaded module will be executed in the context of the old module. That way, variables in the global namespace that has the type of a type defined in the module won't have to be redefined when you reload the module. Here is a clarifying example:
 
 A file called M.jl contains:
 
@@ -132,8 +136,8 @@ areload()
 M.f(my_var)
 ```
 
-This will print "Second version". If you had used ```Base.reload("M.jl")``` instead of reloading via Autoreload, "First version" would have been printed in first case, but second case would have resulted in an error.
+This will print "Second version". If you had used ```Base.reload("M.jl")``` instead of reloading via ``smart_reload``, "First version" would have been printed in first case, but second case would have resulted in an error. If a file is marked for autoreloading (via ```arequire``), then whenever that file or any file it includes changes, it will be reloaded with ``smart_reload``. 
 
 Limitations
 ============
-Autoreload.jl uses Julia's built-in ```reload``` command, and as such is subject to various limitations inherent in the current Julia architecture. Reloaded type reassignment does not always reassign immutable types correctly, but this will be fixed.
+Autoreload.jl uses Julia's built-in ```reload``` command, and as such is subject to various limitations inherent in the current Julia architecture. 
