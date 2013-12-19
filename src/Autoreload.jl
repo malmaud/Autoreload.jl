@@ -51,7 +51,6 @@ function arequire(filename=""; command= :on, depends_on=String[])
         for i in 1:length(auto_depends)
             if !isabspath(auto_depends[i])
                 auto_depends[i] = joinpath(dirname(filename), auto_depends[i])
-                @show auto_depends[i]
             end
         end
         depends_on = vcat(auto_depends, depends_on) 
@@ -80,6 +79,8 @@ function arequire(filename=""; command= :on, depends_on=String[])
 end
 
 function smart_reload(file; kwargs...)
+    global suppress_warnings
+    suppress_warnings = true
     cd(dirname(file)) do 
         parsed = parse_file(file; kwargs...)
         module_paths = extract_modules(parsed)
@@ -87,6 +88,7 @@ function smart_reload(file; kwargs...)
             reload_module(module_name, e)
         end
     end
+    suppress_warnings = false
 end
 
 function try_reload(file; kwargs...)

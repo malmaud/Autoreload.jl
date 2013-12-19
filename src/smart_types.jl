@@ -184,7 +184,7 @@ function try_getfield(m, name)
     try
         var = m.(name)
     catch err
-        warn("Symbol collection warning: \n$err")
+        #warn("Symbol collection warning: \n$err")
         return (nothing, false)
     end
     return (var, true)
