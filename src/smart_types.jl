@@ -41,14 +41,19 @@ function reload_module(name, e)
             break
         end
     end
-    create_module(m_tmp, Expr(:block)) # won't work with absolute references
     m = nothing
     if name in names(Main, true)
         m = Main.(name)
         if isa(m, Module)
             e_i = eval_includes(e)
-            create_module(name, e, Main.(m_tmp))
-            e_t = strip_types(m, e_i, Main.(m_tmp).(name))
+            if name == :Main
+                create_module(m_tmp, e)
+                e_t = strip_types(Main, e_i, Main.(m_tmp))
+            else
+                create_module(m_tmp, Expr(:block)) 
+                create_module(name, e, Main.(m_tmp))
+                e_t = strip_types(m, e_i, Main.(m_tmp).(name))
+            end
             #module_rewrite(Main, name, m)
             if e_t != nothing
                 for arg in e_t.args
@@ -114,7 +119,7 @@ function get_type_name(e::Expr)
     else
         error("Name of type could not be extracted: \n$e")
     end
-    if isa(name, Expr)
+    while isa(name, Expr)
         name = name.args[1]
     end
     name
@@ -275,8 +280,8 @@ function extract_types(mod::Module)
     types
 end
 
-function is_identical_type(t1::DataType, t2::DataType)
-    if t1.name == t2.name &&
+function is_identical_type(t1::DataType, t2::DataType) #todo this needs to be more accurate
+    if t1.name.name == t2.name.name &&
         length(names(t1)) == length(names(t2)) && 
         all(names(t1).==names(t2)) && 
         #sizeof(t1)==sizeof(t2) && 

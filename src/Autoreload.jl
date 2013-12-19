@@ -80,6 +80,9 @@ end
 
 function smart_reload(file; kwargs...)
     global suppress_warnings
+    if !isabspath(file)
+        file = find_file(standarize(file))
+    end
     suppress_warnings = true
     cd(dirname(file)) do 
         parsed = parse_file(file; kwargs...)
@@ -89,6 +92,7 @@ function smart_reload(file; kwargs...)
         end
     end
     suppress_warnings = false
+    return
 end
 
 function try_reload(file; kwargs...)
