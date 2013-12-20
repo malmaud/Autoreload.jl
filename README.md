@@ -94,7 +94,7 @@ Autoreload provides a function called ``smart_reload``. It has similar semantics
 If you try to reload a type that is already defined in the global scope (e.g, you are auto-reloading a file that defines a type not wrapped in a module), you would normally get an error about redefining a constant. Autoreload will automatically remove the type declaration before reloading your script it is identical to a type that is already defined, avoiding an error.
 
 
-If you reload a module that defines types, then those type definitions will be stripped out of the module, and the remainnig expressions in the reloaded module will be executed in the context of the old module. That way, variables in the global namespace that has the type of a type defined in the module won't have to be redefined when you reload the module. Here is a clarifying example:
+If you reload a module that defines types, then those type definitions will be stripped out of the module, and the remaining expressions in the reloaded module will be executed in the context of the old module. That way, variables in the global namespace that has the type of a type defined in the module won't have to be redefined when you reload the module. Here is a clarifying example:
 
 A file called M.jl contains:
 
