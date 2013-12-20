@@ -62,6 +62,7 @@ function reload_module(name, e)
                 return
             end
         end
+        warn("Recreating module $name because of changed types")
     end
     create_module(name, e)
     if m != nothing
@@ -280,13 +281,14 @@ function extract_types(mod::Module)
     types
 end
 
-function is_identical_type(t1::DataType, t2::DataType) #todo this needs to be more accurate
+function is_identical_type(t1::DataType, t2::DataType) 
     if t1.name.name == t2.name.name &&
         length(names(t1)) == length(names(t2)) && 
         all(names(t1).==names(t2)) && 
         #sizeof(t1)==sizeof(t2) && 
-        #t1.parameters==t2.parameters && #verify this
-        all(fieldoffsets(t1).==fieldoffsets(t2))
+        t1.parameters==t2.parameters && #verify this
+        all(fieldoffsets(t1).==fieldoffsets(t2)) &&
+        t1.types == t2.types
         true
     else
         false

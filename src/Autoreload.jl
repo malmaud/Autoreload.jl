@@ -80,8 +80,12 @@ end
 
 function smart_reload(file; kwargs...)
     global suppress_warnings
+    original_file = file
     if !isabspath(file)
         file = find_file(standarize(file))
+        if file == nothing
+            error("File $(original_file) not found")
+        end
     end
     suppress_warnings = true
     cd(dirname(file)) do 
