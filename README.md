@@ -34,7 +34,7 @@ There is basic support for handling dependencies between files which are to be r
 arequire("M3", depends_on=["M1", "M2"])
 ```
 
-M3 will then be auto-reloaded if either M1.jl, M2.jl, or M3.jl is edited, will all three files being reloaded in the correct order.  If an autoreloaded file has ```include``` statements, any file it includes will automatically be determined to be a dependency. This makes it convenient to interactively write a package by calling ```aimport``` with the package name and including the rest of the package files with ```include``` statements in the main package source file.
+M3 will then be auto-reloaded if either M1.jl, M2.jl, or M3.jl is edited, will all three files being reloaded in the correct order.  If an autoreloaded file has ```include``` statements, any file it includes will automatically be determined to be a dependency. This makes it convenient to interactively write a package by calling ```arequire``` with the package name and including the rest of the package files with ```include``` statements in the main package source file.
 
 
 IJulia integration
@@ -112,7 +112,7 @@ Then in an interactive session, I have:
 
 ```
 using Autoreload
-aimport("M")
+arequire("M")
 my_var = M.MyType(5)
 M.f(my_var)
 ```
