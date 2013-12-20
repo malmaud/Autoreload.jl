@@ -34,7 +34,7 @@ There is basic support for handling dependencies between files which are to be r
 arequire("M3", depends_on=["M1", "M2"])
 ```
 
-M3 will then be auto-reloaded if either M1.jl, M2.jl, or M3.jl is edited, will all three files being reloaded in the correct order.  If an autoreloaded file has ```include``` statements, any file it includes will automatically be determined to be a dependency. This makes it convenient to interactively write a package by calling ```aimport``` with the package name and including the rest of the package files with ```include``` statements in the main package source file.
+M3 will then be auto-reloaded if either M1.jl, M2.jl, or M3.jl is edited, will all three files being reloaded in the correct order.  If an autoreloaded file has ```include``` statements, any file it includes will automatically be determined to be a dependency. This makes it convenient to interactively write a package by calling ```arequire``` with the package name and including the rest of the package files with ```include``` statements in the main package source file.
 
 
 IJulia integration
@@ -94,7 +94,7 @@ Autoreload provides a function called ``smart_reload``. It has similar semantics
 If you try to reload a type that is already defined in the global scope (e.g, you are auto-reloading a file that defines a type not wrapped in a module), you would normally get an error about redefining a constant. Autoreload will automatically remove the type declaration before reloading your script it is identical to a type that is already defined, avoiding an error.
 
 
-If you reload a module that defines types, then those type definitions will be stripped out of the module, and the remainnig expressions in the reloaded module will be executed in the context of the old module. That way, variables in the global namespace that has the type of a type defined in the module won't have to be redefined when you reload the module. Here is a clarifying example:
+If you reload a module that defines types, then those type definitions will be stripped out of the module, and the remaining expressions in the reloaded module will be executed in the context of the old module. That way, variables in the global namespace that has the type of a type defined in the module won't have to be redefined when you reload the module. Here is a clarifying example:
 
 A file called M.jl contains:
 
@@ -112,7 +112,7 @@ Then in an interactive session, I have:
 
 ```
 using Autoreload
-aimport("M")
+arequire("M")
 my_var = M.MyType(5)
 M.f(my_var)
 ```
