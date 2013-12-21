@@ -62,7 +62,11 @@ function reload_module(name, e)
                 return
             end
         end
-        warn("Recreating module $name because of changed types")
+        if name == :Main
+            warn("Type defined in Main changed. Unavoidable error will occur")
+        else
+            warn("Recreating module $name because of changed types")
+        end
     end
     create_module(name, e)
     if m != nothing
@@ -167,8 +171,8 @@ function extract_modules(e_block)
     modules = (Symbol=>Any)[]
     in_main = {}
     for e in e_block.args
-        isa(e, Expr) || continue
-        if e.head == :module
+        # isa(e, Expr) || continue
+        if isa(e, Expr) && e.head == :module
             name = e.args[2]
             m_e = e.args[3]
             modules[name] = m_e

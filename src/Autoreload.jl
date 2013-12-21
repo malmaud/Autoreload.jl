@@ -34,12 +34,14 @@ function arequire(filename=""; command= :on, depends_on=String[])
     if isempty(filename)
         return collect(keys(files))
     end
+    original_filename = filename
     filename = find_file(standarize(filename), constants=options[:constants])
+    filename == nothing && error("File $original_filename not found")
     if command in [:on, :on_depends]
         if filename in files
             remove_file(filename)
         end
-        if command==:on
+        if command == :on
             should_reload = true
         else
             should_reload = false
@@ -58,7 +60,7 @@ function arequire(filename=""; command= :on, depends_on=String[])
             d = standarize(d)
             if !haskey(files, d)
                 d = find_file(d, base_file = filename)
-                if d==nothing
+                if d == nothing
                     error("Dependent file not found")
                 end
                 arequire(d, command = :on_depends)
@@ -133,11 +135,13 @@ function areload(command= :force; kwargs...)
     dependencies = get_dependency_graph()
     file_order = topological_sort(dependencies)
     should_reload = [filename=>false for filename in file_order]
+    marked_for_mtime_update = {}
     for (i, file) in enumerate(file_order)
         file_time = files[file].mtime
         if reload_mtime(file) > file_time
             should_reload[file] = true
-            files[file].mtime = reload_mtime(file)
+            # files[file].mtime = reload_mtime(file)
+            push!(marked_for_mtime_update, file)
         end
     end
     old_reload = copy(should_reload)
@@ -160,6 +164,11 @@ function areload(command= :force; kwargs...)
             try_reload(file; constants=options[:constants], kwargs...)
         end
     end
+
+    for file in marked_for_mtime_update
+        files[file].mtime = reload_mtime(file)
+    end
+
     return
 end
 
