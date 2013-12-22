@@ -51,11 +51,14 @@ function reload_module(name, e)
                 e_t = strip_types(Main, e_i, Main.(m_tmp))
             else
                 create_module(m_tmp, Expr(:block)) 
+                info_debug("creating temporary module $m_tmp")
                 create_module(name, e, Main.(m_tmp))
+                info_debug("stripping types")
                 e_t = strip_types(m, e_i, Main.(m_tmp).(name))
             end
             #module_rewrite(Main, name, m)
             if e_t != nothing
+                info_debug("evaluating in context of original module")
                 for arg in e_t.args
                     eval(m, arg)
                 end
@@ -68,9 +71,11 @@ function reload_module(name, e)
             warn("Recreating module $name because of changed types")
         end
     end
+    info_debug("initializing module $name")
     create_module(name, e)
     if m != nothing
         if options[:smart_types]
+            info_debug("switching types in $name")
             switch_types(m, Main.(name))
         end
     end
@@ -142,6 +147,11 @@ function strip_types(m, e_block, m_new)
                     if is_identical_type(t, m_new.(name))
                         do_strip = true
                     else
+                        info_debug("Type $t changed")
+                        if DEBUG
+                            module_rewrite(Main, :old_t, t)
+                            module_rewrite(Main, :new_t, m_new.(name))
+                        end
                         return nothing
                     end
                 end
@@ -285,15 +295,51 @@ function extract_types(mod::Module)
     types
 end
 
-function is_identical_type(t1::DataType, t2::DataType) 
+function is_identical_type(t1, t2; kwargs...)
+    t1 == t2
+end
+
+function is_identical_type(t1::TypeVar, t2::TypeVar; kwargs...)
+    t1.name == t2.name || return false
+    if isa(t1.ub, Tuple)
+        isa(t2.ub, Tuple) || return false
+        length(t1.ub) == length(t2.ub) || return false
+        for i in 1:length(t1.ub)
+            is_identical_type(t1.ub[i], t2.ub[i]) || return false
+        end
+    else
+        is_identical_type(t1.ub, t2.ub) || return false
+    end
+    return true
+end
+
+
+function is_identical_type(t1::DataType, t2::DataType; deep_check::Bool=true)
+    if !deep_check
+        # This is hacky.
+        return t1.name.name == t2.name.name
+    end
     if t1.name.name == t2.name.name &&
         length(names(t1)) == length(names(t2)) && 
-        all(names(t1).==names(t2)) && 
+        all(names(t1).==names(t2))  
         #sizeof(t1)==sizeof(t2) && 
-        t1.parameters==t2.parameters && #verify this
-        all(fieldoffsets(t1).==fieldoffsets(t2)) &&
-        t1.types == t2.types
-        true
+        # t1.parameters==t2.parameters && #verify this
+        # all(fieldoffsets(t1).==fieldoffsets(t2)) &&
+        # t1.types == t2.types
+        if length(t1.parameters) != length(t2.parameters)
+            return false
+        end
+        for i in 1:length(t1.parameters)
+            if !is_identical_type(t1.parameters[i], t2.parameters[i], deep_check=false)
+                return false
+            end
+        end
+        for i in 1:length(t1.types)
+            if !is_identical_type(t1.types[i], t2.types[i], deep_check=false)
+                return false
+            end
+        end
+        return true
     else
         false
     end

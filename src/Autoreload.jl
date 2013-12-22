@@ -7,6 +7,15 @@ include("smart_types.jl")
 include("files.jl")
 include("dependencies.jl")
 
+DEBUG = false
+
+info_debug(msg) = DEBUG ? info(msg) : nothing
+
+function toggle_debug()
+    global DEBUG
+    DEBUG = !DEBUG
+end
+
 function aoptions_set(;kwargs...)
     global options
     for (key, value) in kwargs
