@@ -201,6 +201,7 @@ function collect_symbols(m)
 end
 
 function try_getfield(m, name)
+    local var
     try
         var = m.(name)
     catch err
