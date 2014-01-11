@@ -10,6 +10,6 @@ type Dep
 end
 suppress_warnings = false
 const files = (String=>AFile)[]
-const options = (Symbol=>Any)[:constants=>false, :smart_types=>true, :verbose_level=>:warn, :state=>:on]
+const options = (Symbol=>Any)[:constants=>false, :strip_types=>true, :smart_types=>true, :verbose_level=>:warn, :state=>:on]
 # verbose_level = :warn
 # state = :on

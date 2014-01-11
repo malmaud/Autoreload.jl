@@ -9,6 +9,7 @@ include("dependencies.jl")
 
 DEBUG = false
 
+
 info_debug(msg) = DEBUG ? info(msg) : nothing
 
 function toggle_debug()
@@ -91,6 +92,7 @@ end
 
 function smart_reload(file; kwargs...)
     global suppress_warnings
+    info_debug("Initiating smart reload")
     original_file = file
     if !isabspath(file)
         file = find_file(standarize(file))
@@ -100,10 +102,15 @@ function smart_reload(file; kwargs...)
     end
     suppress_warnings = true
     cd(dirname(file)) do 
+        info_debug("parsing $file")
         parsed = parse_file(file; kwargs...)
+        info_debug("extracting modules")
         module_paths = extract_modules(parsed)
+        info_debug("looping")
         for (module_name, e) in module_paths
+            info_debug("reloading $module_name")
             reload_module(module_name, e)
+            info_debug("done reloading $module_name")
         end
     end
     suppress_warnings = false

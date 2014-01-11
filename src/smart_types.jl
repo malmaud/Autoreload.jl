@@ -33,8 +33,34 @@ function switch_mods(vars, mod1, mod2)
     end
 end
 
+macro type_strip()
+    if VERSION >= v"0.3.0-prerelease+925"
+        quote
+        end
+    else
+        esc(quote 
+            if options[:strip_types]
+                e_i = eval_includes(e)
+                if name == :Main
+                    create_module(m_tmp, e)
+                    e_t = strip_types(Main, e_i, Main.(m_tmp))
+                else
+                    create_module(m_tmp, Expr(:block)) 
+                    info_debug("creating temporary module $m_tmp")
+                    create_module(name, e, Main.(m_tmp))
+                    info_debug("stripping types")
+                    e_t = strip_types(m, e_i, Main.(m_tmp).(name))
+                end
+            else
+                e_t = e
+            end        
+        end)
+    end
+end
+
 function reload_module(name, e)
     local m_tmp
+    info_debug("reloading module $name")
     while true
         m_tmp = symbol("_m_tmp_$(rand(1:100000))") #todo must be better way to do this
         if !(m_tmp in names(Main, true))
@@ -45,17 +71,23 @@ function reload_module(name, e)
     if name in names(Main, true)
         m = Main.(name)
         if isa(m, Module)
-            e_i = eval_includes(e)
-            if name == :Main
-                create_module(m_tmp, e)
-                e_t = strip_types(Main, e_i, Main.(m_tmp))
-            else
-                create_module(m_tmp, Expr(:block)) 
-                info_debug("creating temporary module $m_tmp")
-                create_module(name, e, Main.(m_tmp))
-                info_debug("stripping types")
-                e_t = strip_types(m, e_i, Main.(m_tmp).(name))
-            end
+            @type_strip
+            # if options[:strip_types]
+            #     e_i = eval_includes(e)
+            #     if name == :Main
+            #         create_module(m_tmp, e)
+            #         e_t = strip_types(Main, e_i, Main.(m_tmp))
+            #     else
+            #         create_module(m_tmp, Expr(:block)) 
+            #         info_debug("creating temporary module $m_tmp")
+            #         create_module(name, e, Main.(m_tmp))
+            #         info_debug("stripping types")
+            #         e_t = strip_types(m, e_i, Main.(m_tmp).(name))
+            #     end
+            # else
+            #     e_t = e
+            # end
+            e_t = e
             #module_rewrite(Main, name, m)
             if e_t != nothing
                 info_debug("evaluating in context of original module")
@@ -165,6 +197,7 @@ function strip_types(m, e_block, m_new)
 end
 
 function create_module(name, e, base=Main)
+    info_debug("creating module")
     if name == :Main
         eval(Main, e)
     else
@@ -180,6 +213,7 @@ end
 function extract_modules(e_block)
     modules = (Symbol=>Any)[]
     in_main = {}
+    info_debug("beginning module extraction")
     for e in e_block.args
         # isa(e, Expr) || continue
         if isa(e, Expr) && e.head == :module
@@ -191,6 +225,7 @@ function extract_modules(e_block)
         end
     end
     modules[:Main] = block_wrap(in_main)
+    info_debug("finishing module extraction")
     return modules
 end
 
