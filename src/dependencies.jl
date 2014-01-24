@@ -53,10 +53,10 @@ function _extract_deps(e::Expr, deps::Vector{Dep})
             if isa(e.args[2], String)
                 push!(deps, Dep(false, e.args[2]))
             end
-        elseif e.args[1] == :require
-            if isa(e.args[2], String)
-                push!(deps, Dep(true, e.args[2]))
-            end
+        # elseif e.args[1] == :require
+        #     if isa(e.args[2], String)
+        #         push!(deps, Dep(true, e.args[2]))
+        #     end
         end
     elseif e.head == :import
         # push!(deps, Dep(true,    string(e.args[1])))
