@@ -9,7 +9,7 @@ type Dep
     name::String
 end
 suppress_warnings = false
-const files = (String=>AFile)[]
-const options = (Symbol=>Any)[:constants=>false, :strip_types=>true, :smart_types=>true, :verbose_level=>:warn, :state=>:on]
+const files = Dict{String,AFile}()
+const options = Dict{Symbol,Any}(:constants=>false, :strip_types=>true, :smart_types=>true, :verbose_level=>:warn, :state=>:on)
 # verbose_level = :warn
 # state = :on
