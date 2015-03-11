@@ -2,7 +2,7 @@ function topological_sort{T}(outgoing::Dict{T, Vector{T}})
     # kahn topological sort
     # todo: use better data structures
     order = T[]
-    incoming = DIct{T,Vector}()
+    incoming = Dict{T,Vector}()
     for (n, children) in outgoing
         for child in children
             if haskey(incoming, child)
