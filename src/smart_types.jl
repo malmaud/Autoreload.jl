@@ -114,7 +114,7 @@ function reload_module(name, e)
 end
 
 function eval_includes(e_block)
-    e_list = {}
+    e_list = []
     for e in e_block.args
         if isa(e, Expr) && 
             e.head == :call && 
@@ -211,8 +211,8 @@ function switch_types(m_old, m_new)
 end
 
 function extract_modules(e_block)
-    modules = (Symbol=>Any)[]
-    in_main = {}
+    modules = Dict{Symbol,Any}()
+    in_main = []
     info_debug("beginning module extraction")
     for e in e_block.args
         # isa(e, Expr) || continue
@@ -230,7 +230,7 @@ function extract_modules(e_block)
 end
 
 function collect_symbols(m)
-    vars = {}
+    vars = []
     _collect_symbols(m, vars, 1)
     return vars
 end
@@ -320,7 +320,7 @@ function alter_type(x, T::DataType, var_name="")
 end
 
 function extract_types(mod::Module)
-    types = (DataType=>Symbol)[]
+    types = Dict{DataType,Symbol}()
     for var_name in names(mod, true)
         var, has_var = try_getfield(mod, var_name)
         has_var || continue
