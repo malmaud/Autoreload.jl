@@ -1,5 +1,7 @@
 module Autoreload
 
+using Compat
+
 export arequire, areload,  aoptions_set, aoptions_get, smart_reload
 
 include("constants.jl")
