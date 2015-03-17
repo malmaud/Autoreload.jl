@@ -153,7 +153,7 @@ function areload(command= :force; kwargs...)
     dependencies = get_dependency_graph()
     file_order = topological_sort(dependencies)
     should_reload = [filename=>false for filename in file_order]
-    marked_for_mtime_update = []
+    marked_for_mtime_update = String[]
     for (i, file) in enumerate(file_order)
         file_time = files[file].mtime
         if reload_mtime(file) > file_time
