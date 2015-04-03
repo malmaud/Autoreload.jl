@@ -212,7 +212,7 @@ end
 
 function extract_modules(e_block)
     modules = Dict{Symbol,Any}()
-    in_main = []
+    in_main = Any[]
     info_debug("beginning module extraction")
     for e in e_block.args
         # isa(e, Expr) || continue
