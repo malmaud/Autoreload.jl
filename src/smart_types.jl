@@ -1,5 +1,5 @@
 function should_symbol_recurse(var)
-    taboo = [Module, String, Dict, Array, Tuple, DataType, Function]
+    taboo = [Module, AbstractString, Dict, Array, Tuple, DataType, Function]
     for datatype in taboo
         if isa(var, datatype)
             return false
@@ -120,7 +120,7 @@ function eval_includes(e_block)
             e.head == :call && 
             e.args[1] == :include 
             local f
-            if isa(e.args[2], String)
+            if isa(e.args[2], AbstractString)
                 f = e.args[2]
             elseif isa(e.args[2], Expr)
                 try
@@ -286,7 +286,7 @@ function _collect_symbols(m, vars, depth)
 end
 
 function unsafe_alter_type!(x, T::DataType)
-    ptr = convert(Ptr{Uint64}, pointer_from_objref(x))
+    ptr = convert(Ptr{@compat UInt64}, pointer_from_objref(x))
     ptr_array = pointer_to_array(ptr, 1)
     ptr_array[1] = pointer_from_objref(T)
     x
