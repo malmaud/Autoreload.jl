@@ -50,7 +50,7 @@ function arequire(filename=""; command= :on, depends_on=String[])
     filename = find_file(standarize(filename), constants=options[:constants])
     filename == nothing && error("File $original_filename not found")
     if command in [:on, :on_depends]
-        if filename in files
+        if haskey(files, filename)
             remove_file(filename)
         end
         if command == :on
