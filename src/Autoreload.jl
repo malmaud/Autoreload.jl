@@ -80,7 +80,10 @@ function arequire(filename=""; command= :on, depends_on=AbstractString[])
             push!(files[filename].deps, d)
         end
         if files[filename].should_reload
-            require(find_file(filename))
+            # Used to be `require`. `reload` does not work for modules that
+            # were never loaded in the first place. Ideally we'd have
+            # `if module_is_loaded reload() else include()`
+            include(find_file(filename))
         end
     elseif command == :off
         if haskey(files, filename)
