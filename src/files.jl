@@ -1,4 +1,4 @@
-function find_in_path(name::String; constants::Bool=true)
+function find_in_path(name::AbstractString; constants::Bool=true)
     isabspath(name) && return name
     isfile(name) && return abspath(name)
     base = name
