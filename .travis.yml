@@ -1,13 +1,13 @@
-language: cpp
-compiler:
-  - clang
-notifications:
-  email: false
-before_install:
-  - sudo add-apt-repository ppa:staticfloat/julia-deps -y
-  - sudo add-apt-repository ppa:staticfloat/julianightlies -y
-  - sudo apt-get update -qq -y
-  - sudo apt-get install libpcre3-dev julia -y
+language: julia
+os:
+  - linux
+  - osx
+julia:
+  - 0.3
+  - 0.4
+  - nightly
 script:
-  - julia -e 'Pkg.init(); run(`ln -s $(pwd()) $(Pkg.dir("Autoreload"))`); Pkg.pin("Autoreload"); Pkg.resolve()'
-  - julia -e 'using Autoreload; @assert isdefined(:Autoreload); @assert typeof(Autoreload) === Module'
+  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+  - julia --check-bounds=yes -e 'Pkg.clone(pwd()); Pkg.build("Autoreload"); Pkg.test("Autoreload"; coverage=true)'
+after_success:
+    - julia -e 'cd(Pkg.dir("Autoreload")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder()); Codecov.submit(process_folder())'

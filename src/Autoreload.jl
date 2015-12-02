@@ -42,7 +42,7 @@ function remove_file(filename)
     pop!(files, filename)
 end
 
-function arequire(filename=""; command= :on, depends_on=String[])
+function arequire(filename=""; command= :on, depends_on=UTF8String[])
     if isempty(filename)
         return collect(keys(files))
     end
@@ -50,7 +50,7 @@ function arequire(filename=""; command= :on, depends_on=String[])
     filename = find_file(standarize(filename), constants=options[:constants])
     filename == nothing && error("File $original_filename not found")
     if command in [:on, :on_depends]
-        if filename in files
+        if filename in keys(files)
             remove_file(filename)
         end
         if command == :on
@@ -58,7 +58,7 @@ function arequire(filename=""; command= :on, depends_on=String[])
         else
             should_reload = false
         end
-        files[filename] = AFile(should_reload, reload_mtime(filename), String[])
+        files[filename] = AFile(should_reload, reload_mtime(filename), UTF8String[])
         parsed_file = parse_file(filename)
         auto_depends = extract_deps(parsed_file)
         auto_depends = [_.name for _ in auto_depends] #todo respect reload flag
@@ -153,7 +153,7 @@ function areload(command= :force; kwargs...)
     dependencies = get_dependency_graph()
     file_order = topological_sort(dependencies)
     should_reload = [filename=>false for filename in file_order]
-    marked_for_mtime_update = String[]
+    marked_for_mtime_update = UTF8String[]
     for (i, file) in enumerate(file_order)
         file_time = files[file].mtime
         if reload_mtime(file) > file_time

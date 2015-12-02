@@ -50,11 +50,11 @@ end
 function _extract_deps(e::Expr, deps::Vector{Dep})
     if e.head == :call
         if e.args[1] == :include
-            if isa(e.args[2], String)
+            if isa(e.args[2], AbstractString)
                 push!(deps, Dep(false, e.args[2]))
             end
         # elseif e.args[1] == :require
-        #     if isa(e.args[2], String)
+        #     if isa(e.args[2], AbstractString)
         #         push!(deps, Dep(true, e.args[2]))
         #     end
         end
