@@ -39,7 +39,7 @@ end
 function find_file(filename; base_file=nothing, constants=true)
     path = find_in_path(filename, constants=constants)
     if path == nothing && base_file!=nothing
-        base_file = Base.find_in_node1_path(base_file)
+        base_file = Base.find_in_path(base_file)
         path = joinpath(dirname(base_file), filename)
         if !isfile(path)
             path = nothing

@@ -53,11 +53,12 @@ function arequire(filename=""; command= :on, depends_on=UTF8String[])
         if filename in keys(files)
             remove_file(filename)
         end
-        if command == :on
-            should_reload = true
-        else
-            should_reload = false
-        end
+        # if command == :on
+        #     should_reload = true
+        # else
+        #     should_reload = false
+        # end
+        should_reload = true
         files[filename] = AFile(should_reload, reload_mtime(filename), UTF8String[])
         parsed_file = parse_file(filename)
         auto_depends = extract_deps(parsed_file)
@@ -67,7 +68,7 @@ function arequire(filename=""; command= :on, depends_on=UTF8String[])
                 auto_depends[i] = joinpath(dirname(filename), auto_depends[i])
             end
         end
-        depends_on = vcat(auto_depends, depends_on) 
+        depends_on = vcat(auto_depends, depends_on)
         for d in depends_on
             d = standarize(d)
             if !haskey(files, d)
@@ -103,7 +104,7 @@ function smart_reload(file; kwargs...)
         end
     end
     suppress_warnings = true
-    cd(dirname(file)) do 
+    cd(dirname(file)) do
         info_debug("parsing $file")
         parsed = parse_file(file; kwargs...)
         info_debug("extracting modules")
@@ -204,4 +205,3 @@ if isdefined(Main, :IJulia)
 end
 
 end
-
