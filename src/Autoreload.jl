@@ -80,7 +80,7 @@ function arequire(filename=""; command= :on, depends_on=UTF8String[])
             push!(files[filename].deps, d)
         end
         if files[filename].should_reload
-            require(find_file(filename))
+            include(find_file(filename))
         end
     elseif command == :off
         if haskey(files, filename)
