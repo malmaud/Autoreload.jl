@@ -1,25 +1,45 @@
+using MacroTools
+
+function parse_deps(ex)
+    m = @match ex begin
+        (x_ <: y_) => (:deps, x, y)
+        x_ => (:no_deps, x)
+    end
+    if m[1] == :deps
+        deps = @match m[3] begin
+            [x__] => (x)
+            x_ => ([x])
+        end
+    else
+        deps = []
+    end
+    (m[2], deps)
+end
+
 macro aimport(mod)
-    if isdefined(mod)
+    modname, deps = parse_deps(mod)
+    if isdefined(modname)
         quote
-            import $mod
+            import $modname
         end
     else
         esc(quote
-            arequire(string($(QuoteNode(mod))))
-            import $mod
+            arequire(string($(QuoteNode(modname))), depends_on=map(string, $deps))
+            import $modname
         end)
     end
 end
 
-macro ausing(mod)
-    if isdefined(mod)
+macro aimport(mod)
+    modname, deps = parse_deps(mod)
+    if isdefined(modname)
         quote
-            using $mod
+            using $modname
         end
     else
         esc(quote
-            arequire(string($(QuoteNode(mod))))
-            using $mod
+            arequire(string($(QuoteNode(modname))), depends_on=map(string, $deps))
+            using $modname
         end)
     end
 end
