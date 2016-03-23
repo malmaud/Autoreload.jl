@@ -51,15 +51,16 @@ function arequire(filename=""; command= :on, depends_on=UTF8String[])
     filename = find_file(standarize(filename), constants=options[:constants])
     filename == nothing && error("File $original_filename not found")
     if command in [:on, :on_depends]
+        was_reloading = false
         if filename in keys(files)
+            was_reloading = files[filename].should_reload
             remove_file(filename)
         end
-        # if command == :on
-        #     should_reload = true
-        # else
-        #     should_reload = false
-        # end
-        should_reload = true
+        if command == :on
+            should_reload = true
+        else
+            should_reload = was_reloading
+        end
         files[filename] = AFile(should_reload, reload_mtime(filename), UTF8String[])
         parsed_file = parse_file(filename)
         auto_depends = extract_deps(parsed_file)
