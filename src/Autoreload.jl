@@ -3,6 +3,7 @@ module Autoreload
 using Compat
 
 export arequire, areload,  aoptions_set, aoptions_get, smart_reload
+export @aimport, @ausing
 
 include("constants.jl")
 include("smart_types.jl")
@@ -203,5 +204,7 @@ if isdefined(Main, :IJulia)
         warn("Could not add IJulia hooks:\n$(err)")
     end
 end
+
+include("macros.jl")
 
 end
