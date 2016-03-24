@@ -25,7 +25,7 @@ function auto_do(mod, action)
         end
     else
         esc(quote
-            arequire(string($(QuoteNode(modname))), depends_on=map(string, $deps))
+            Autoreload.arequire(string($(QuoteNode(modname))), depends_on=map(string, $deps))
             $(Expr(action, modname))
         end)
     end
