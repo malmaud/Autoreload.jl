@@ -16,30 +16,25 @@ function parse_deps(ex)
     (m[2], deps)
 end
 
-macro aimport(mod)
+
+function auto_do(mod, action)
     modname, deps = parse_deps(mod)
     if isdefined(modname)
         quote
-            import $modname
+            $(Expr(action, modname))
         end
     else
         esc(quote
             arequire(string($(QuoteNode(modname))), depends_on=map(string, $deps))
-            import $modname
+            $(Expr(action, modname))
         end)
     end
 end
 
 macro aimport(mod)
-    modname, deps = parse_deps(mod)
-    if isdefined(modname)
-        quote
-            using $modname
-        end
-    else
-        esc(quote
-            arequire(string($(QuoteNode(modname))), depends_on=map(string, $deps))
-            using $modname
-        end)
-    end
+    auto_do(mod, :import)
+end
+
+macro ausing(mod)
+    auto_do(mod, :using)
 end
