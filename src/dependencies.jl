@@ -43,7 +43,7 @@ end
 
 
 function get_dependency_graph()
-    deps = [filename=>afile.deps for (filename, afile) in files]
+    deps = Dict(filename=>afile.deps for (filename, afile) in files)
     return deps
 end
 

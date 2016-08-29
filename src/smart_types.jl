@@ -62,14 +62,14 @@ function reload_module(name, e)
     local m_tmp
     info_debug("reloading module $name")
     while true
-        m_tmp = symbol("_m_tmp_$(rand(1:100000))") #todo must be better way to do this
+        m_tmp = Symbol("_m_tmp_$(rand(1:100000))") #todo must be better way to do this
         if !(m_tmp in names(Main, true))
             break
         end
     end
     m = nothing
     if name in names(Main, true)
-        m = Main.(name)
+        m = getfield(Main,name)
         if isa(m, Module)
             @type_strip
             # if options[:strip_types]
@@ -300,7 +300,7 @@ function alter_type(x, T::DataType, var_name="")
         x_new = T()
         for field in fields
             if field in old_fields
-                x_new.(field) = x.(field)
+                set_field!(x_new,field,x.(field))
             end
         end
     catch

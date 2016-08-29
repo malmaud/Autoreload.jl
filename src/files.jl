@@ -60,7 +60,7 @@ end
 function parse_file(filename; kwargs...)
     path = find_file(filename; kwargs...)
     handle = open(path)
-    source = string("begin\n", readall(handle), "\n end")
+    source = string("begin\n", readstring(handle), "\n end")
     close(handle)
     parsed = parse(source)
     return parsed
