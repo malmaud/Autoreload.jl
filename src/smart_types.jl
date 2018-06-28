@@ -34,27 +34,7 @@ function switch_mods(vars, mod1, mod2)
 end
 
 macro type_strip()
-    if VERSION >= v"0.3.0-prerelease+925"
-        quote
-        end
-    else
-        esc(quote 
-            if options[:strip_types]
-                e_i = eval_includes(e)
-                if name == :Main
-                    create_module(m_tmp, e)
-                    e_t = strip_types(Main, e_i, Main.(m_tmp))
-                else
-                    create_module(m_tmp, Expr(:block)) 
-                    info_debug("creating temporary module $m_tmp")
-                    create_module(name, e, Main.(m_tmp))
-                    info_debug("stripping types")
-                    e_t = strip_types(m, e_i, Main.(m_tmp).(name))
-                end
-            else
-                e_t = e
-            end        
-        end)
+    quote
     end
 end
 
